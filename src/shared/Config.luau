@@ -33,7 +33,7 @@ local Config = {
 	-- Colours.
 	LAVA_COLOR = Color3.fromRGB(200, 40, 20),
 	CHECKPOINT_COLOR = Color3.fromRGB(255, 255, 255),
-	SPAWN_COLOR = Color3.fromRGB(120, 200, 120),
+	SPAWN_COLOR = Color3.fromRGB(90, 185, 105),
 	FINISH_COLOR = Color3.fromRGB(255, 215, 0),
 
 	-- Moving platforms slide sideways (along Z) so the jump becomes a timing
@@ -153,8 +153,8 @@ Config.ZONES = {
 		name = "Meadow",
 		hueMin = 0.24,
 		hueMax = 0.38,
-		saturation = 0.6,
-		value = 0.85,
+		saturation = 0.75,
+		value = 0.78,
 		material = Enum.Material.Grass,
 		friction = nil,
 		pattern = { "static", "static", "moving", "static", "conveyor", "static", "jumppad", "moving" },
@@ -163,8 +163,8 @@ Config.ZONES = {
 		name = "Ice",
 		hueMin = 0.52,
 		hueMax = 0.6,
-		saturation = 0.35,
-		value = 0.95,
+		saturation = 0.5,
+		value = 0.88,
 		material = Enum.Material.Ice,
 		friction = 0.05,
 		pattern = { "static", "disappearing", "moving", "disappearing", "conveyor", "jumppad", "disappearing", "spinner" },
