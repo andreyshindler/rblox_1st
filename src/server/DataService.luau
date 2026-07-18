@@ -20,11 +20,17 @@ local DataService = {}
 
 export type Entry = { name: string, seconds: number }
 
--- A player's persistent economy record. `owned` is a list of ShopItems ids.
+-- A player's persistent record. `owned` is a list of ShopItems ids;
+-- `lastDailyClaim` is a unix day number (os.time() // 86400), 0 = never claimed.
 export type Profile = {
 	coins: number,
 	owned: { string },
 	equipped: string?,
+	wins: number,
+	rebirths: number,
+	winsSinceRebirth: number,
+	dailyStreak: number,
+	lastDailyClaim: number,
 }
 
 local enabled = Config.USE_DATASTORE == true
@@ -120,31 +126,45 @@ local dirty: { [number]: boolean } = {}
 local lastSave: { [number]: number } = {}
 
 local function defaultProfile(): Profile
-	return { coins = 0, owned = {}, equipped = nil }
+	return {
+		coins = 0,
+		owned = {},
+		equipped = nil,
+		wins = 0,
+		rebirths = 0,
+		winsSinceRebirth = 0,
+		dailyStreak = 0,
+		lastDailyClaim = 0,
+	}
 end
 
+-- Best-of-both merge for cross-server races: counters take the max, owned is the
+-- union, and current-session state (equipped, streak, winsSinceRebirth) trusts
+-- the newer record. lastDailyClaim takes the max so a reward is never claimable
+-- twice on the same day.
 local function mergeProfiles(old: Profile?, new: Profile): Profile
 	if not old then
 		return new
 	end
 	local ownedSet: { [string]: boolean } = {}
 	local owned: { string } = {}
-	for _, id in old.owned do
-		if not ownedSet[id] then
-			ownedSet[id] = true
-			table.insert(owned, id)
-		end
-	end
-	for _, id in new.owned do
-		if not ownedSet[id] then
-			ownedSet[id] = true
-			table.insert(owned, id)
+	for _, list in { old.owned, new.owned } do
+		for _, id in list do
+			if not ownedSet[id] then
+				ownedSet[id] = true
+				table.insert(owned, id)
+			end
 		end
 	end
 	return {
 		coins = math.max(old.coins, new.coins),
 		owned = owned,
 		equipped = new.equipped,
+		wins = math.max(old.wins or 0, new.wins),
+		rebirths = math.max(old.rebirths or 0, new.rebirths),
+		winsSinceRebirth = new.winsSinceRebirth,
+		dailyStreak = new.dailyStreak,
+		lastDailyClaim = math.max(old.lastDailyClaim or 0, new.lastDailyClaim),
 	}
 end
 
@@ -162,12 +182,21 @@ local function writeProfile(userId: number)
 	end)
 end
 
+-- In-flight guard so concurrent loadProfile calls (several services load on
+-- join) result in exactly one GetAsync and share the same cached table.
+local loadingProfiles: { [number]: boolean } = {}
+
 -- Loads (or initialises) the player's profile into the cache. Yields; call from
 -- a spawned thread on join. Returns the cached profile.
 function DataService.loadProfile(userId: number): Profile
+	while loadingProfiles[userId] do
+		task.wait()
+	end
 	if profiles[userId] then
 		return profiles[userId]
 	end
+	loadingProfiles[userId] = true
+
 	local loaded: Profile? = nil
 	if enabled and profileStore then
 		local ok, result = pcall(function()
@@ -179,10 +208,16 @@ function DataService.loadProfile(userId: number): Profile
 				coins = typeof(t.coins) == "number" and t.coins or 0,
 				owned = typeof(t.owned) == "table" and t.owned or {},
 				equipped = typeof(t.equipped) == "string" and t.equipped or nil,
+				wins = typeof(t.wins) == "number" and t.wins or 0,
+				rebirths = typeof(t.rebirths) == "number" and t.rebirths or 0,
+				winsSinceRebirth = typeof(t.winsSinceRebirth) == "number" and t.winsSinceRebirth or 0,
+				dailyStreak = typeof(t.dailyStreak) == "number" and t.dailyStreak or 0,
+				lastDailyClaim = typeof(t.lastDailyClaim) == "number" and t.lastDailyClaim or 0,
 			}
 		end
 	end
 	profiles[userId] = loaded or defaultProfile()
+	loadingProfiles[userId] = nil
 	return profiles[userId]
 end
 

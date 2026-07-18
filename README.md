@@ -24,11 +24,19 @@ running the course.
   persisted, and ranked on the global **"Fastest Times" board** near spawn.
 - Feedback everywhere: checkpoint chimes, coin dings, a finish fanfare with
   confetti, and fireworks when you set a new personal best.
+- **Rebirth**: after finishing a run you can Rebirth — progress resets, you gain a
+  **Rebirths** rank, a permanent **+25% coin multiplier per rebirth**, and a tiered
+  aura (bronze → silver → gold → diamond → mythic). **Wins persist** between sessions.
+- **Daily rewards**: a login streak pays escalating coins (day 7 caps the table and
+  gifts the Rainbow Blaze trail). Miss a day and the streak resets.
+- **Badges** (optional): First Win, 10 Wins, Speedrunner, Rich, and Reborn — create
+  them on the Creator Dashboard and paste the ids into `Config.BADGE_IDS`.
 - HUD shows stage, timer, best time and coins, plus **Reset**, **Skip Stage**
-  (gamepass) and **Shop** buttons.
+  (gamepass), **Shop** and **Rebirth** buttons, and a daily-reward claim popup.
 - **Cross-platform**: touch and mouse tap the HUD; on a controller (PlayStation /
-  Xbox) **Reset = Triangle/Y**, **Skip Stage = Square/X**, **Shop = D-pad Up** (jump
-  stays on Cross/A), and the shop is navigable with the gamepad.
+  Xbox) **Reset = Triangle/Y**, **Skip Stage = Square/X**, **Shop = D-pad Up**,
+  **Rebirth = D-pad Down** (jump stays on Cross/A), and the shop and daily popup
+  are navigable with the gamepad.
 
 ## Project layout
 
@@ -44,6 +52,9 @@ src/
     CoinService.luau          # Coin pickups, Coins leaderstat, finish bonus
     ShopService.luau          # Server-validated trail shop (buy/equip) + trails
     DataService.luau          # DataStores: best times, global ranks, profiles
+    RebirthService.luau       # Rebirth rank, coin multiplier, tiered auras
+    DailyRewardService.luau   # Login streak rewards + day-7 trail grant
+    BadgeAwards.luau          # Roblox badges off the game's listener hooks
     GlobalBoard.luau          # Physical "Fastest Times" sign near spawn
     GamepassService.luau      # Skip-stage gamepass + Skip button remote
     EffectsService.luau       # Sounds, confetti, PB fireworks, ambient music

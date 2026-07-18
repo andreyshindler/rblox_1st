@@ -100,6 +100,31 @@ local Config = {
 	-- (e.g. 1848354536); 0 = no music.
 	MUSIC_ID = 0,
 	MUSIC_VOLUME = 0.3,
+
+	-- Rebirth: after finishing at least one run since the last rebirth, players
+	-- can rebirth — progress resets, they gain a rank and a permanent coin
+	-- multiplier of REBIRTH_MULT per rebirth (0.25 = +25% each).
+	REBIRTH_MULT = 0.25,
+
+	-- Daily rewards: coins for consecutive daily logins; the streak caps at the
+	-- table's last entry. Reaching day DAILY_TRAIL_DAY also grants the
+	-- DAILY_STREAK_TRAIL cosmetic if not already owned.
+	DAILY_REWARDS = { 20, 30, 45, 60, 80, 100, 150 },
+	DAILY_TRAIL_DAY = 7,
+	DAILY_STREAK_TRAIL = "rainbow",
+
+	-- Roblox badges. Create badges for the experience on the Creator Dashboard
+	-- and paste their ids here; 0 disables a badge. Awarding is pcall-guarded so
+	-- unset/invalid ids can never break gameplay.
+	BADGE_IDS = {
+		FIRST_WIN = 0, -- finish the course once
+		WINS_10 = 0, -- finish the course 10 times
+		SPEEDRUNNER = 0, -- finish faster than SPEEDRUN_TIME
+		RICH = 0, -- hold RICH_COINS coins at once
+		REBORN = 0, -- rebirth for the first time
+	},
+	SPEEDRUN_TIME = 60, -- seconds; finishing faster earns SPEEDRUNNER
+	RICH_COINS = 1000,
 }
 
 -- Themed zones, ZONE_SIZE stages each, in course order. Difficulty ramps:
