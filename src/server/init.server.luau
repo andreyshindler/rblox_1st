@@ -17,6 +17,18 @@ local DailyRewardService = require(script:WaitForChild("DailyRewardService"))
 local BadgeAwards = require(script:WaitForChild("BadgeAwards"))
 local GhostService = require(script:WaitForChild("GhostService"))
 
+-- Enforce lighting/exposure at boot. The place file (default.project.json)
+-- pins Lighting.Technology = ShadowMap (not scriptable), but the scriptable
+-- exposure values are re-applied here so a live place published from a stale
+-- sync can never ship overexposed, washed-out colors — especially on mobile
+-- clients, whose fallback lighting pipeline blows bright scenes out to white.
+local Lighting = game:GetService("Lighting")
+Lighting.Brightness = 1.5
+Lighting.Ambient = Color3.fromRGB(80, 80, 80)
+Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+Lighting.ExposureCompensation = 0
+Lighting.ClockTime = 14
+
 local course = CourseBuilder.build()
 HazardService.start(course)
 CoinService.start(course)
