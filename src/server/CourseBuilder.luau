@@ -9,12 +9,18 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 
 local CourseBuilder = {}
 
--- Result of build(): the objects the CheckpointService needs to wire up.
+-- A moving platform carries its checkpoint marker so HazardService can keep the
+-- two together as the platform slides.
+export type MovingEntry = { platform: BasePart, checkpoint: BasePart }
+
+-- Result of build(): everything the other services need to wire up.
 export type Course = {
 	spawn: SpawnLocation,
 	checkpoints: { BasePart }, -- index 1 == checkpoint for stage 1, etc.
 	lava: { BasePart },
 	finish: BasePart,
+	movingPlatforms: { MovingEntry },
+	disappearingPlatforms: { BasePart },
 }
 
 local function makePart(name: string, size: Vector3, color: Color3, parent: Instance): Part
@@ -62,10 +68,14 @@ function CourseBuilder.build(): Course
 
 	local checkpoints: { BasePart } = {}
 	local lava: { BasePart } = {}
+	local movingPlatforms: { MovingEntry } = {}
+	local disappearingPlatforms: { BasePart } = {}
 
 	-- Stages 1..STAGE_COUNT: platform + a lava strip in the gap + a checkpoint pad.
 	for stage = 1, Config.STAGE_COUNT do
 		x += step
+
+		local kind = Config.platformKind(stage)
 
 		local platform = makePart(
 			"Platform_" .. stage,
@@ -74,8 +84,17 @@ function CourseBuilder.build(): Course
 			folder
 		)
 		platform.Position = Vector3.new(x, y, 0)
+		platform:SetAttribute("Kind", kind)
 
-		-- Lava strip sitting in the gap just before this platform.
+		-- Telegraph the special platforms so the challenge is fair.
+		if kind == "moving" then
+			platform.Material = Enum.Material.Metal
+		elseif kind == "disappearing" then
+			platform.Material = Enum.Material.Ice
+			platform.Transparency = 0.15
+		end
+
+		-- Lava strip sitting in the open gap just before this platform.
 		local lavaPart = makePart(
 			"Lava_" .. stage,
 			Config.LAVA_SIZE,
@@ -86,7 +105,9 @@ function CourseBuilder.build(): Course
 		lavaPart.Position = Vector3.new(x - step / 2, y, 0)
 		table.insert(lava, lavaPart)
 
-		-- Checkpoint pad at the start of this stage's platform.
+		-- Checkpoint pad at the start of this stage's platform. It is a
+		-- non-colliding trigger: players pass through it (it still fires Touched)
+		-- rather than standing on it, so disappearing platforms stay fair.
 		local checkpoint = makePart(
 			"Checkpoint_" .. stage,
 			Config.CHECKPOINT_SIZE,
@@ -94,6 +115,7 @@ function CourseBuilder.build(): Course
 			folder
 		)
 		checkpoint.Material = Enum.Material.Neon
+		checkpoint.CanCollide = false
 		checkpoint.Position = Vector3.new(x, y + 1, 0)
 
 		local stageValue = Instance.new("IntValue")
@@ -102,6 +124,12 @@ function CourseBuilder.build(): Course
 		stageValue.Parent = checkpoint
 
 		checkpoints[stage] = checkpoint
+
+		if kind == "moving" then
+			table.insert(movingPlatforms, { platform = platform, checkpoint = checkpoint })
+		elseif kind == "disappearing" then
+			table.insert(disappearingPlatforms, platform)
+		end
 	end
 
 	-- Finish pad after the final stage.
@@ -118,6 +146,8 @@ function CourseBuilder.build(): Course
 		checkpoints = checkpoints,
 		lava = lava,
 		finish = finish,
+		movingPlatforms = movingPlatforms,
+		disappearingPlatforms = disappearingPlatforms,
 	}
 end
 

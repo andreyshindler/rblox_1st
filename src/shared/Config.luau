@@ -1,9 +1,8 @@
 --!strict
 -- Config.luau
 -- Shared tunables for Rainbow Rush. Lives in ReplicatedStorage so both the
--- server (course builder / checkpoints) and client (HUD) read the same values.
-
-export type StageColor = { number }
+-- server (course builder / checkpoints / hazards) and client (HUD) read the
+-- same values.
 
 local Config = {
 	-- Number of playable stages (checkpoint 0 is the spawn, so there are
@@ -22,6 +21,21 @@ local Config = {
 	CHECKPOINT_COLOR = Color3.fromRGB(255, 255, 255),
 	SPAWN_COLOR = Color3.fromRGB(120, 200, 120),
 	FINISH_COLOR = Color3.fromRGB(255, 215, 0),
+
+	-- Moving platforms slide sideways (along Z) so the jump becomes a timing
+	-- challenge. AMPLITUDE is the distance travelled to each side of centre.
+	MOVE_AMPLITUDE = 8,
+	MOVE_TIME = 2.5, -- seconds for one one-way sweep
+
+	-- Disappearing platforms fade out shortly after a player steps on, then return.
+	DISAPPEAR_DELAY = 0.6, -- grace period after first touch before it goes
+	DISAPPEAR_DURATION = 2.0, -- how long it stays gone before returning
+
+	-- Skip-stage gamepass. Create a gamepass on your game and put its id here.
+	-- While it is 0 the button still works in Studio (see ALLOW_SKIP_IN_STUDIO)
+	-- so you can test; in a live game a 0 id simply does nothing.
+	SKIP_STAGE_GAMEPASS_ID = 0,
+	ALLOW_SKIP_IN_STUDIO = true,
 }
 
 -- Rainbow gradient for stage platforms. `stageColor(i)` returns a hue-rotated
@@ -29,6 +43,17 @@ local Config = {
 function Config.stageColor(stageIndex: number): Color3
 	local hue = (stageIndex / math.max(Config.STAGE_COUNT, 1)) % 1
 	return Color3.fromHSV(hue, 0.65, 0.95)
+end
+
+-- Decides what kind of platform a stage gets. Returns "static", "moving" or
+-- "disappearing". The mix is deterministic so the course is the same every build.
+function Config.platformKind(stage: number): string
+	if stage % 4 == 0 then
+		return "disappearing"
+	elseif stage % 3 == 0 then
+		return "moving"
+	end
+	return "static"
 end
 
 return Config

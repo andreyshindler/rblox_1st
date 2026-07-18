@@ -2,11 +2,15 @@
 -- CheckpointService.luau
 -- Owns player progression: leaderstats, checkpoint tracking, respawn-at-checkpoint,
 -- lava resets, and finish handling. Uses Roblox's standard `leaderstats` pattern so
--- the Stage value shows up on the in-game leaderboard automatically.
+-- Stage / Wins / Best show up on the in-game leaderboard automatically. Delegates
+-- run timing to TimerService.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local CourseBuilder = require(script.Parent:WaitForChild("CourseBuilder"))
+local TimerService = require(script.Parent:WaitForChild("TimerService"))
 
 local CheckpointService = {}
 
@@ -30,16 +34,26 @@ local function getHumanoid(part: Instance): (Humanoid?, Player?)
 	return humanoid, player
 end
 
+local function setLeaderstat(player: Player, name: string, value: number)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local stat = leaderstats and leaderstats:FindFirstChild(name)
+	if stat and (stat:IsA("IntValue") or stat:IsA("NumberValue")) then
+		stat.Value = value
+	end
+end
+
 local function setStage(player: Player, stage: number)
 	if stage <= (playerStage[player.UserId] or 0) then
 		return
 	end
 	playerStage[player.UserId] = stage
+	setLeaderstat(player, "Stage", stage)
 
-	local leaderstats = player:FindFirstChild("leaderstats")
-	local stageValue = leaderstats and leaderstats:FindFirstChild("Stage")
-	if stageValue and stageValue:IsA("IntValue") then
-		stageValue.Value = stage
+	-- A run is timed from clearing the first checkpoint to the finish. Starting
+	-- here (rather than at spawn) means the clock only runs once the player is
+	-- actually on the course, and each new lap re-arms cleanly.
+	if stage == 1 and not player:GetAttribute("RunActive") then
+		TimerService.startRun(player)
 	end
 end
 
@@ -91,6 +105,12 @@ local function onPlayerAdded(player: Player)
 	wins.Value = 0
 	wins.Parent = leaderstats
 
+	-- Best completion time in seconds (0 == no time set yet).
+	local best = Instance.new("NumberValue")
+	best.Name = "Best"
+	best.Value = 0
+	best.Parent = leaderstats
+
 	leaderstats.Parent = player
 
 	player.CharacterAdded:Connect(function(character)
@@ -104,6 +124,27 @@ end
 local function onPlayerRemoving(player: Player)
 	playerStage[player.UserId] = nil
 	finishDebounce[player.UserId] = nil
+	TimerService.clear(player)
+end
+
+-- Public: the player's current stage.
+function CheckpointService.getStage(player: Player): number
+	return playerStage[player.UserId] or 0
+end
+
+-- Public: bump the player forward one stage and teleport them there. Used by the
+-- skip-stage gamepass. No-op once they are already at the final stage.
+function CheckpointService.advanceStage(player: Player)
+	local current = playerStage[player.UserId] or 0
+	local target = math.min(current + 1, Config.STAGE_COUNT)
+	if target == current then
+		return
+	end
+	playerStage[player.UserId] = target
+	setLeaderstat(player, "Stage", target)
+	if player.Character then
+		teleportToCheckpoint(player, player.Character)
+	end
 end
 
 -- Wire the world's Touched events to progression logic.
@@ -138,18 +179,19 @@ function CheckpointService.start(builtCourse: CourseBuilder.Course)
 		end
 		finishDebounce[player.UserId] = true
 
+		-- Stop the clock and record the time / best.
+		TimerService.finishRun(player)
+
 		local leaderstats = player:FindFirstChild("leaderstats")
 		local wins = leaderstats and leaderstats:FindFirstChild("Wins")
 		if wins and wins:IsA("IntValue") then
 			wins.Value += 1
 		end
 
-		-- Reset the player to the start for another lap.
+		-- Reset the player to the start for another lap. The finish time stays on
+		-- the HUD until they clear the first checkpoint again, which re-arms the clock.
 		playerStage[player.UserId] = 0
-		local stageValue = leaderstats and leaderstats:FindFirstChild("Stage")
-		if stageValue and stageValue:IsA("IntValue") then
-			stageValue.Value = 0
-		end
+		setLeaderstat(player, "Stage", 0)
 		if player.Character then
 			teleportToCheckpoint(player, player.Character)
 		end
