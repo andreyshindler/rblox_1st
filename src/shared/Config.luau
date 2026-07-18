@@ -56,10 +56,9 @@ local Config = {
 	JUMP_PAD_VELOCITY = Vector3.new(55, 65, 0), -- forward (+X) and up impulse
 	JUMPPAD_GAP_MULT = 2.5, -- the gap before a jumppad stage is this many GAPs wide
 
-	-- Skip-stage gamepass. Create a gamepass on your game and put its id here.
-	-- While it is 0 the button still works in Studio (see ALLOW_SKIP_IN_STUDIO)
-	-- so you can test; in a live game a 0 id simply does nothing.
-	SKIP_STAGE_GAMEPASS_ID = 0,
+	-- Skip-stage gamepass. In Studio the button also works without ownership
+	-- (see ALLOW_SKIP_IN_STUDIO) so it stays easy to test.
+	SKIP_STAGE_GAMEPASS_ID = 1918256892,
 	ALLOW_SKIP_IN_STUDIO = true,
 
 	-- Best-time persistence. When enabled, each player's best time is saved to a
