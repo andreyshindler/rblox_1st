@@ -118,7 +118,7 @@ function GlobalBoard.start(course: CourseBuilder.Course)
 	GlobalBoard.refresh()
 
 	-- Nudge a refresh (debounced) whenever someone sets a new best.
-	TimerService.setBestListener(function()
+	TimerService.addBestListener(function()
 		if os.clock() - lastRefresh >= REFRESH_DEBOUNCE then
 			GlobalBoard.refresh()
 		end

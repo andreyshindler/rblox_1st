@@ -20,9 +20,9 @@ local TimerService = {}
 -- backed by DataService).
 local bestTimes: { [number]: number } = {}
 
--- Optional listener notified when a player sets a new personal best (used by the
--- global board to refresh). Set via setBestListener.
-local bestListener: ((player: Player, seconds: number) -> ())? = nil
+-- Listeners notified when a player sets a new personal best (global board
+-- refresh, fireworks, ...). Register via addBestListener.
+local bestListeners: { (player: Player, seconds: number) -> () } = {}
 
 local function serverNow(): number
 	return workspace:GetServerTimeNow()
@@ -38,8 +38,8 @@ local function setBestLeaderstat(player: Player, seconds: number)
 end
 
 -- Registers a callback fired (in its own thread) whenever a new personal best is set.
-function TimerService.setBestListener(fn: (player: Player, seconds: number) -> ())
-	bestListener = fn
+function TimerService.addBestListener(fn: (player: Player, seconds: number) -> ())
+	table.insert(bestListeners, fn)
 end
 
 -- Loads the player's persisted best (async) and reflects it on the leaderboard.
@@ -82,8 +82,8 @@ function TimerService.finishRun(player: Player): number
 			DataService.saveBest(userId, elapsed)
 		end)
 
-		if bestListener then
-			task.spawn(bestListener, player, elapsed)
+		for _, listener in bestListeners do
+			task.spawn(listener, player, elapsed)
 		end
 	end
 
