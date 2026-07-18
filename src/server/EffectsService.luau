@@ -109,16 +109,8 @@ function EffectsService.start(course: CourseBuilder.Course)
 		end)
 	end)
 
-	-- Ambient music loop (opt-in via Config.MUSIC_ID).
-	if Config.MUSIC_ID > 0 then
-		local music = Instance.new("Sound")
-		music.Name = "AmbientMusic"
-		music.SoundId = "rbxassetid://" .. Config.MUSIC_ID
-		music.Volume = Config.MUSIC_VOLUME
-		music.Looped = true
-		music.Parent = workspace
-		music:Play()
-	end
+	-- Background music is handled client-side (src/client/Music.luau) so each
+	-- player hears the track for the zone they are in.
 end
 
 return EffectsService

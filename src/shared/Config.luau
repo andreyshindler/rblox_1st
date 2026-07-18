@@ -95,10 +95,19 @@ local Config = {
 		death = "rbxasset://sounds/splat.mp3",
 		finish = "rbxasset://sounds/victory.wav",
 	},
-	-- Background music loop: set to a catalogue audio id number to enable
-	-- (e.g. 1848354536); 0 = no music.
-	MUSIC_ID = 0,
+	-- Background music: per-zone tracks with a client-side crossfade as the
+	-- player progresses. Paste free-to-use audio ids from the Creator Store
+	-- (Toolbox → Marketplace → Audio → Music, filter Free — Monstercat/NCS
+	-- tracks are licensed for Roblox use). 0 = silent; DEFAULT plays wherever a
+	-- zone has no track of its own.
+	MUSIC = {
+		DEFAULT = 0,
+		Meadow = 0,
+		Ice = 0,
+		Volcano = 0,
+	},
 	MUSIC_VOLUME = 0.3,
+	MUSIC_CROSSFADE = 1.5, -- seconds to fade between zone tracks
 
 	-- Rebirth: after finishing at least one run since the last rebirth, players
 	-- can rebirth — progress resets, they gain a rank and a permanent coin
