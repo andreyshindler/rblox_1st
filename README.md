@@ -65,6 +65,7 @@ src/
   client/
     init.client.luau          # HUD + trail shop UI (StarterPlayerScripts.Client)
     Ghost.luau                # Ghost replays: run recording + local-only playback
+    Music.luau                # Zone-aware background music with crossfade
   shared/
     Config.luau               # Tunables shared by server + client (ReplicatedStorage.Shared)
     ShopItems.luau            # Trail catalogue shared by shop UI + server validation
@@ -133,12 +134,25 @@ and the next server build reflects it.
   `UpdateAsync` with a merge rule, debounced while online and flushed on leave
   and server shutdown — a lost race with another server never loses purchases.
 
-## Sounds
+## Sounds & music
 
 Default sound effects use Roblox built-ins (`rbxasset://sounds/...`) so they work
 with zero setup. For a richer soundscape, swap the ids in `Config.SOUNDS` for
-catalogue audio (`rbxassetid://<id>`), and set `MUSIC_ID` to a licensed audio id
-to enable the ambient loop.
+catalogue audio (`rbxassetid://<id>`).
+
+**Background music** is zone-aware: the client crossfades between tracks as you
+progress (`src/client/Music.luau`). Fill in `Config.MUSIC` with audio ids —
+`DEFAULT` plays everywhere a zone has no track of its own; per-zone keys
+(`Meadow`, `Ice`, `Volcano`) override it. Until ids are set, the game is simply
+silent (no errors).
+
+**Picking licensed tracks (important):** most Roblox catalogue audio is
+restricted — use free-to-use music from the **Creator Store**: in Studio open
+*Toolbox → Creator Store → Audio → Music* and filter by **Free**
+(Monstercat and NCS tracks are licensed for Roblox use), or browse
+[create.roblox.com/store](https://create.roblox.com/store) → Audio. Click a
+track and copy its asset id into `Config.MUSIC`. Audio ids from random
+"music code" websites usually won't play in a published game.
 
 ## Best-time persistence & global board
 

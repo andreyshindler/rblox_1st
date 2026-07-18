@@ -299,6 +299,10 @@ refreshRebirthButton()
 local Ghost = require(script:WaitForChild("Ghost"))
 Ghost.start()
 
+-- Zone-aware background music (silent until ids are set in Config.MUSIC).
+local Music = require(script:WaitForChild("Music"))
+Music.start()
+
 local function refreshGhostButton()
 	if Ghost.isEnabled() then
 		ghostButton.BackgroundColor3 = Color3.fromRGB(70, 130, 160)
