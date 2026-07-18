@@ -36,18 +36,28 @@ local function corner(parent: Instance, radius: number)
 	c.Parent = parent
 end
 
+-- The default Roblox player list occupies the top-right corner and duplicates
+-- every one of our leaderstats (Stage/Wins/Best/Coins/Rebirths, all shown in
+-- the HUD or on the in-world Fastest Times board). Disable it so the HUD's
+-- top-right cluster owns that corner. Delete this call to bring it back.
+pcall(function()
+	game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+end)
+
 local gui = Instance.new("ScreenGui")
 gui.Name = "RainbowRushHud"
 gui.ResetOnSpawn = false
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = playerGui
 
--- Stage readout (top).
+-- Stage / timer / Best cluster: a compact right-aligned stack in the top-right
+-- corner, out of the player's sightline. (The default Roblox player list that
+-- normally lives there is disabled below — it only duplicated these stats.)
 local stageLabel = Instance.new("TextLabel")
 stageLabel.Name = "StageLabel"
-stageLabel.AnchorPoint = Vector2.new(0.5, 0)
-stageLabel.Position = UDim2.new(0.5, 0, 0, 12)
-stageLabel.Size = UDim2.new(0, 260, 0, 44)
+stageLabel.AnchorPoint = Vector2.new(1, 0)
+stageLabel.Position = UDim2.new(1, -16, 0, 12)
+stageLabel.Size = UDim2.new(0, 200, 0, 44)
 stageLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 stageLabel.BackgroundTransparency = 0.25
 stageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -60,9 +70,9 @@ corner(stageLabel, 8)
 -- Live run timer.
 local timerLabel = Instance.new("TextLabel")
 timerLabel.Name = "TimerLabel"
-timerLabel.AnchorPoint = Vector2.new(0.5, 0)
-timerLabel.Position = UDim2.new(0.5, 0, 0, 62)
-timerLabel.Size = UDim2.new(0, 200, 0, 36)
+timerLabel.AnchorPoint = Vector2.new(1, 0)
+timerLabel.Position = UDim2.new(1, -16, 0, 62)
+timerLabel.Size = UDim2.new(0, 160, 0, 36)
 timerLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 timerLabel.BackgroundTransparency = 0.35
 timerLabel.TextColor3 = Color3.fromRGB(120, 230, 255)
@@ -75,13 +85,14 @@ corner(timerLabel, 8)
 -- Best time.
 local bestLabel = Instance.new("TextLabel")
 bestLabel.Name = "BestLabel"
-bestLabel.AnchorPoint = Vector2.new(0.5, 0)
-bestLabel.Position = UDim2.new(0.5, 0, 0, 102)
-bestLabel.Size = UDim2.new(0, 200, 0, 28)
+bestLabel.AnchorPoint = Vector2.new(1, 0)
+bestLabel.Position = UDim2.new(1, -16, 0, 102)
+bestLabel.Size = UDim2.new(0, 160, 0, 28)
 bestLabel.BackgroundTransparency = 1
 bestLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 bestLabel.Font = Enum.Font.GothamMedium
 bestLabel.TextScaled = true
+bestLabel.TextXAlignment = Enum.TextXAlignment.Right
 bestLabel.Text = "Best --"
 bestLabel.Parent = gui
 
