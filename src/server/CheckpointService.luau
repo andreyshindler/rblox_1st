@@ -135,6 +135,14 @@ local function onPlayerAdded(player: Player)
 	-- Pull the player's persisted best time onto the leaderboard.
 	TimerService.loadPlayer(player)
 
+	-- Wins persist in the profile; reflect them (and rebirth eligibility) once
+	-- the profile is in.
+	task.spawn(function()
+		local profile = DataService.loadProfile(player.UserId)
+		setLeaderstat(player, "Wins", profile.wins)
+		player:SetAttribute("CanRebirth", profile.winsSinceRebirth > 0)
+	end)
+
 	player.CharacterAdded:Connect(function(character)
 		onCharacterAdded(player, character)
 	end)
@@ -153,6 +161,15 @@ end
 -- Public: the player's current stage.
 function CheckpointService.getStage(player: Player): number
 	return playerStage[player.UserId] or 0
+end
+
+-- Public: send the player back to the start (stage 0). Used by the rebirth flow.
+function CheckpointService.resetToStart(player: Player)
+	playerStage[player.UserId] = 0
+	setLeaderstat(player, "Stage", 0)
+	if player.Character then
+		teleportToCheckpoint(player, player.Character)
+	end
 end
 
 -- Public: bump the player forward one stage and teleport them there. Used by the
@@ -210,10 +227,14 @@ function CheckpointService.start(builtCourse: CourseBuilder.Course)
 			task.spawn(listener, player, elapsed)
 		end
 
-		local leaderstats = player:FindFirstChild("leaderstats")
-		local wins = leaderstats and leaderstats:FindFirstChild("Wins")
-		if wins and wins:IsA("IntValue") then
-			wins.Value += 1
+		-- Wins are persistent: bump the profile and mirror it to the leaderstat.
+		local profile = DataService.getProfile(player.UserId)
+		if profile then
+			profile.wins += 1
+			profile.winsSinceRebirth += 1
+			DataService.markProfileDirty(player.UserId)
+			setLeaderstat(player, "Wins", profile.wins)
+			player:SetAttribute("CanRebirth", true)
 		end
 
 		-- Reset the player to the start for another lap. The finish time stays on

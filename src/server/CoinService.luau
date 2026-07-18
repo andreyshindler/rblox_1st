@@ -24,6 +24,13 @@ function CoinService.setPickupListener(fn: (player: Player, coin: BasePart) -> (
 	pickupListener = fn
 end
 
+-- Listeners fired after any award with the player's new balance (badges etc.).
+local awardListeners: { (player: Player, newTotal: number) -> () } = {}
+
+function CoinService.addAwardListener(fn: (player: Player, newTotal: number) -> ())
+	table.insert(awardListeners, fn)
+end
+
 local function setCoinsLeaderstat(player: Player, value: number)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local stat = leaderstats and leaderstats:FindFirstChild("Coins")
@@ -32,15 +39,21 @@ local function setCoinsLeaderstat(player: Player, value: number)
 	end
 end
 
--- Award coins into the player's profile and leaderstat.
+-- Award coins into the player's profile and leaderstat. Earnings are scaled by
+-- the rebirth multiplier (+REBIRTH_MULT per rebirth); spending elsewhere is not.
 function CoinService.award(player: Player, amount: number)
 	local profile = DataService.getProfile(player.UserId)
 	if not profile then
 		return
 	end
-	profile.coins += amount
+	local multiplier = 1 + profile.rebirths * Config.REBIRTH_MULT
+	profile.coins += math.floor(amount * multiplier + 0.5)
 	DataService.markProfileDirty(player.UserId)
 	setCoinsLeaderstat(player, profile.coins)
+
+	for _, listener in awardListeners do
+		task.spawn(listener, player, profile.coins)
+	end
 end
 
 -- Finish payout: a flat bonus plus a speed bonus that scales linearly from

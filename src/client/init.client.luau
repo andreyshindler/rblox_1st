@@ -21,6 +21,7 @@ local ShopItems = require(Shared:WaitForChild("ShopItems"))
 local RESET_KEYS = { Enum.KeyCode.ButtonY, Enum.KeyCode.R }
 local SKIP_KEYS = { Enum.KeyCode.ButtonX }
 local SHOP_KEYS = { Enum.KeyCode.DPadUp, Enum.KeyCode.B }
+local REBIRTH_KEYS = { Enum.KeyCode.DPadDown }
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -139,6 +140,21 @@ skipButton.Text = "⏭ Skip Stage"
 skipButton.Parent = gui
 corner(skipButton, 8)
 
+-- Rebirth button: sits above the bottom row, only enabled once the server marks
+-- the player eligible (finished a run since their last rebirth).
+local rebirthButton = Instance.new("TextButton")
+rebirthButton.Name = "RebirthButton"
+rebirthButton.AnchorPoint = Vector2.new(0.5, 1)
+rebirthButton.Position = UDim2.new(0.5, 0, 1, -68)
+rebirthButton.Size = UDim2.new(0, 220, 0, 40)
+rebirthButton.BackgroundColor3 = Color3.fromRGB(120, 120, 140)
+rebirthButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+rebirthButton.Font = Enum.Font.GothamBold
+rebirthButton.TextScaled = true
+rebirthButton.Text = "⭐ Rebirth"
+rebirthButton.Parent = gui
+corner(rebirthButton, 8)
+
 -- Keep the stage label in sync with leaderstats.Stage.
 local leaderstats = player:WaitForChild("leaderstats")
 local stageValue = leaderstats:WaitForChild("Stage")
@@ -217,11 +233,55 @@ end
 bindAction("RainbowRushReset", doReset, RESET_KEYS)
 bindAction("RainbowRushSkip", doSkip, SKIP_KEYS)
 
+-- Rebirth: enabled state mirrors the server-set CanRebirth attribute; the count
+-- on the label mirrors leaderstats.Rebirths.
+local rebirthEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Rebirth")
+
+local function canRebirth(): boolean
+	return player:GetAttribute("CanRebirth") == true
+end
+
+local function refreshRebirthButton()
+	local count = 0
+	local stat = leaderstats:FindFirstChild("Rebirths")
+	if stat and stat:IsA("IntValue") then
+		count = stat.Value
+	end
+	local suffix = count > 0 and (" (" .. count .. ")") or ""
+	if canRebirth() then
+		rebirthButton.BackgroundColor3 = Color3.fromRGB(170, 60, 255)
+		rebirthButton.Text = "⭐ Rebirth" .. suffix .. " — Ready!"
+	else
+		rebirthButton.BackgroundColor3 = Color3.fromRGB(120, 120, 140)
+		rebirthButton.Text = "⭐ Rebirth" .. suffix .. " — finish a run"
+	end
+end
+
+local function doRebirth()
+	if canRebirth() then
+		rebirthEvent:FireServer()
+	end
+end
+
+rebirthButton.Activated:Connect(doRebirth)
+bindAction("RainbowRushRebirth", doRebirth, REBIRTH_KEYS)
+
+player:GetAttributeChangedSignal("CanRebirth"):Connect(refreshRebirthButton)
+task.spawn(function()
+	local stat = leaderstats:WaitForChild("Rebirths", 15)
+	if stat then
+		stat:GetPropertyChangedSignal("Value"):Connect(refreshRebirthButton)
+	end
+	refreshRebirthButton()
+end)
+refreshRebirthButton()
+
 -- These are triggered by dedicated buttons (above), not by gamepad UI focus, so
 -- keep them out of gamepad selection — that avoids ButtonA (jump) accidentally
 -- activating a focused button.
 resetButton.Selectable = false
 skipButton.Selectable = false
+rebirthButton.Selectable = false
 
 -- Show the matching controller glyph on the buttons while a gamepad is in use,
 -- and the plain labels for touch/mouse.
@@ -443,3 +503,79 @@ bindAction("RainbowRushShop", toggleShop, SHOP_KEYS)
 -- The launcher button itself stays out of gamepad focus (same reasoning as
 -- reset/skip); the panel's own buttons are selectable for console navigation.
 shopButton.Selectable = false
+
+-- ---------------------------------------------------------------------------
+-- Daily reward popup
+
+local dailyAction = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DailyAction") :: RemoteFunction
+
+local dailyPanel = Instance.new("Frame")
+dailyPanel.Name = "DailyPanel"
+dailyPanel.AnchorPoint = Vector2.new(0.5, 0)
+dailyPanel.Position = UDim2.new(0.5, 0, 0, 140)
+dailyPanel.Size = UDim2.new(0, 300, 0, 120)
+dailyPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+dailyPanel.BackgroundTransparency = 0.05
+dailyPanel.Visible = false
+dailyPanel.Parent = gui
+corner(dailyPanel, 12)
+
+local dailyText = Instance.new("TextLabel")
+dailyText.Size = UDim2.new(1, -20, 0, 56)
+dailyText.Position = UDim2.new(0, 10, 0, 8)
+dailyText.BackgroundTransparency = 1
+dailyText.TextColor3 = Color3.fromRGB(255, 255, 255)
+dailyText.Font = Enum.Font.GothamMedium
+dailyText.TextScaled = true
+dailyText.TextWrapped = true
+dailyText.Text = ""
+dailyText.Parent = dailyPanel
+
+local dailyClaim = Instance.new("TextButton")
+dailyClaim.Name = "ClaimButton"
+dailyClaim.AnchorPoint = Vector2.new(0.5, 1)
+dailyClaim.Position = UDim2.new(0.5, 0, 1, -10)
+dailyClaim.Size = UDim2.new(0, 160, 0, 40)
+dailyClaim.BackgroundColor3 = Color3.fromRGB(60, 160, 90)
+dailyClaim.TextColor3 = Color3.fromRGB(255, 255, 255)
+dailyClaim.Font = Enum.Font.GothamBold
+dailyClaim.TextScaled = true
+dailyClaim.Text = "Claim"
+dailyClaim.Parent = dailyPanel
+corner(dailyClaim, 8)
+
+dailyClaim.Activated:Connect(function()
+	task.spawn(function()
+		local ok, result = pcall(function()
+			return dailyAction:InvokeServer("claim")
+		end)
+		if ok and typeof(result) == "table" and result.ok then
+			dailyText.Text = string.format("+%d coins! Streak: day %d 🔥", result.reward, result.streak)
+			dailyClaim.Visible = false
+			task.delay(3, function()
+				dailyPanel.Visible = false
+			end)
+		else
+			dailyPanel.Visible = false
+		end
+		if GuiService.SelectedObject == dailyClaim then
+			GuiService.SelectedObject = nil
+		end
+	end)
+end)
+
+-- Check on join (small delay so the server has the profile loaded).
+task.spawn(function()
+	task.wait(3)
+	local ok, result = pcall(function()
+		return dailyAction:InvokeServer("check")
+	end)
+	if ok and typeof(result) == "table" and result.claimable then
+		dailyText.Text = string.format("🎁 Daily reward — day %d:\n%d coins", result.streakIfClaimed, result.reward)
+		dailyClaim.Visible = true
+		dailyPanel.Visible = true
+		if gamepadActive() then
+			GuiService.SelectedObject = dailyClaim
+		end
+	end
+end)
