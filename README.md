@@ -31,6 +31,9 @@ running the course.
   gifts the Rainbow Blaze trail). Miss a day and the streak resets.
 - **Badges** (optional): First Win, 10 Wins, Speedrunner, Rich, and Reborn — create
   them on the Creator Dashboard and paste the ids into `Config.BADGE_IDS`.
+- **Ghost replays**: race a translucent ghost of your **own best run** — your runs
+  are recorded client-side (position + yaw, 10 Hz) and the server keeps the
+  recording of your fastest one. Toggle with the 👻 button (or **D-pad Left**).
 - HUD shows stage, timer, best time and coins, plus **Reset**, **Skip Stage**
   (gamepass), **Shop** and **Rebirth** buttons, and a daily-reward claim popup.
 - **Cross-platform**: touch and mouse tap the HUD; on a controller (PlayStation /
@@ -55,11 +58,13 @@ src/
     RebirthService.luau       # Rebirth rank, coin multiplier, tiered auras
     DailyRewardService.luau   # Login streak rewards + day-7 trail grant
     BadgeAwards.luau          # Roblox badges off the game's listener hooks
+    GhostService.luau         # Ghost replays: submit-window validation + storage
     GlobalBoard.luau          # Physical "Fastest Times" sign near spawn
     GamepassService.luau      # Skip-stage gamepass + Skip button remote
     EffectsService.luau       # Sounds, confetti, PB fireworks, ambient music
   client/
     init.client.luau          # HUD + trail shop UI (StarterPlayerScripts.Client)
+    Ghost.luau                # Ghost replays: run recording + local-only playback
   shared/
     Config.luau               # Tunables shared by server + client (ReplicatedStorage.Shared)
     ShopItems.luau            # Trail catalogue shared by shop UI + server validation

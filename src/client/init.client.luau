@@ -22,6 +22,7 @@ local RESET_KEYS = { Enum.KeyCode.ButtonY, Enum.KeyCode.R }
 local SKIP_KEYS = { Enum.KeyCode.ButtonX }
 local SHOP_KEYS = { Enum.KeyCode.DPadUp, Enum.KeyCode.B }
 local REBIRTH_KEYS = { Enum.KeyCode.DPadDown }
+local GHOST_KEYS = { Enum.KeyCode.DPadLeft, Enum.KeyCode.G }
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -139,6 +140,20 @@ skipButton.TextScaled = true
 skipButton.Text = "⏭ Skip Stage"
 skipButton.Parent = gui
 corner(skipButton, 8)
+
+-- Ghost replay toggle (top-left, under the Shop button).
+local ghostButton = Instance.new("TextButton")
+ghostButton.Name = "GhostButton"
+ghostButton.AnchorPoint = Vector2.new(0, 0)
+ghostButton.Position = UDim2.new(0, 16, 0, 100)
+ghostButton.Size = UDim2.new(0, 150, 0, 36)
+ghostButton.BackgroundColor3 = Color3.fromRGB(70, 130, 160)
+ghostButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ghostButton.Font = Enum.Font.GothamMedium
+ghostButton.TextScaled = true
+ghostButton.Text = "👻 Ghost: On"
+ghostButton.Parent = gui
+corner(ghostButton, 8)
 
 -- Rebirth button: sits above the bottom row, only enabled once the server marks
 -- the player eligible (finished a run since their last rebirth).
@@ -279,9 +294,34 @@ refreshRebirthButton()
 -- These are triggered by dedicated buttons (above), not by gamepad UI focus, so
 -- keep them out of gamepad selection — that avoids ButtonA (jump) accidentally
 -- activating a focused button.
+-- Ghost replays: recording/playback lives in the sibling module; the button
+-- just toggles it.
+local Ghost = require(script:WaitForChild("Ghost"))
+Ghost.start()
+
+local function refreshGhostButton()
+	if Ghost.isEnabled() then
+		ghostButton.BackgroundColor3 = Color3.fromRGB(70, 130, 160)
+		ghostButton.Text = "👻 Ghost: On"
+	else
+		ghostButton.BackgroundColor3 = Color3.fromRGB(90, 90, 110)
+		ghostButton.Text = "👻 Ghost: Off"
+	end
+end
+
+local function toggleGhost()
+	Ghost.setEnabled(not Ghost.isEnabled())
+	refreshGhostButton()
+end
+
+ghostButton.Activated:Connect(toggleGhost)
+bindAction("RainbowRushGhost", toggleGhost, GHOST_KEYS)
+refreshGhostButton()
+
 resetButton.Selectable = false
 skipButton.Selectable = false
 rebirthButton.Selectable = false
+ghostButton.Selectable = false
 
 -- Show the matching controller glyph on the buttons while a gamepad is in use,
 -- and the plain labels for touch/mouse.
@@ -304,10 +344,12 @@ local function updateHints()
 		resetButton.Text = "Reset  (" .. keyHint(Enum.KeyCode.ButtonY, "Y") .. ")"
 		skipButton.Text = "Skip Stage  (" .. keyHint(Enum.KeyCode.ButtonX, "X") .. ")"
 		shopButton.Text = "Shop  (" .. keyHint(Enum.KeyCode.DPadUp, "DPad↑") .. ")"
+		ghostButton.Text = (Ghost.isEnabled() and "Ghost On" or "Ghost Off") .. "  (DPad←)"
 	else
 		resetButton.Text = "Reset to checkpoint"
 		skipButton.Text = "⏭ Skip Stage"
 		shopButton.Text = "🛒 Shop"
+		ghostButton.Text = Ghost.isEnabled() and "👻 Ghost: On" or "👻 Ghost: Off"
 	end
 end
 

@@ -125,6 +125,16 @@ local Config = {
 	},
 	SPEEDRUN_TIME = 60, -- seconds; finishing faster earns SPEEDRUNNER
 	RICH_COINS = 1000,
+
+	-- Ghost replays: the client records its own best run (position + yaw) and
+	-- races a translucent replay of it. Samples are recorded at GHOST_SAMPLE_RATE
+	-- per second, capped at GHOST_MAX_SAMPLES (~6.6 minutes at 10 Hz). A new
+	-- personal best opens a GHOST_SUBMIT_WINDOW-second window during which the
+	-- server accepts the client's recording.
+	GHOST_STORE_NAME = "RainbowRushGhost_v1",
+	GHOST_SAMPLE_RATE = 10,
+	GHOST_MAX_SAMPLES = 4000,
+	GHOST_SUBMIT_WINDOW = 30,
 }
 
 -- Themed zones, ZONE_SIZE stages each, in course order. Difficulty ramps:
