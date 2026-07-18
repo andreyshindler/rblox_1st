@@ -1,1 +1,116 @@
-# rblox_1st
+# Rainbow Rush 🌈
+
+A stage-based **obby** (obstacle course) starter game for Roblox, built with
+[Rojo](https://rojo.space). The entire obstacle course is generated **in code at
+server startup** — no manual Studio building required. Sync, press Play, and you're
+running the course.
+
+## Gameplay
+
+- Spawn on the green pad (Stage 0) and parkour across floating rainbow platforms.
+- Each platform starts with a glowing **checkpoint** that locks in your progress —
+  your `Stage` shows on the leaderboard.
+- **Lava strips** in the gaps reset you if you touch them; you respawn at your last
+  checkpoint (not the start).
+- **Moving platforms** (metal) slide side to side — time your jump. **Disappearing
+  platforms** (ice) fade out a moment after you step on, then return, so keep moving.
+- A **live timer** runs from the first checkpoint to the finish, and your **Best**
+  time is tracked on the leaderboard and **saved between sessions**.
+- A **"Fastest Times" board** near spawn shows the global top times across all servers.
+- Reach the gold **finish pad** to score a **Win** and loop back for another lap.
+- HUD shows your stage, live timer and best time, plus **Reset to checkpoint** and
+  **Skip Stage** buttons. Skip Stage is gated by a gamepass (see below).
+- **Cross-platform**: touch and mouse tap the HUD buttons; on a controller
+  (PlayStation / Xbox) **Reset = Triangle/Y** and **Skip Stage = Square/X** (jump
+  stays on Cross/A). The buttons show the matching glyph when a gamepad is in use.
+
+## Project layout
+
+```
+default.project.json          # Rojo project — maps folders to Roblox services
+src/
+  server/
+    init.server.luau          # Boots the game (ServerScriptService.Server)
+    CourseBuilder.luau        # Procedurally builds the course into Workspace
+    HazardService.luau        # Moving (TweenService) + disappearing platforms
+    CheckpointService.luau    # leaderstats, checkpoints, respawn, lava, finish
+    TimerService.luau         # Run timing + best-time tracking (player attributes)
+    DataService.luau          # DataStore + OrderedDataStore best-time persistence
+    GlobalBoard.luau          # Physical "Fastest Times" sign near spawn
+    GamepassService.luau      # Skip-stage gamepass + Skip button remote
+  client/
+    init.client.luau          # HUD (StarterPlayerScripts.Client)
+  shared/
+    Config.luau               # Tunables shared by server + client (ReplicatedStorage.Shared)
+```
+
+## Skip-stage gamepass
+
+The **Skip Stage** button asks the server to jump you forward one checkpoint,
+gated by a gamepass:
+
+1. In Studio, playtest with `ALLOW_SKIP_IN_STUDIO = true` (default) — the button
+   works immediately so you can test.
+2. For a live game, create a gamepass on your experience and set its id in
+   `src/shared/Config.luau` as `SKIP_STAGE_GAMEPASS_ID`. Owners skip instantly;
+   non-owners get the Roblox purchase prompt, and a successful purchase performs
+   the skip.
+
+## Running it
+
+1. **Install Rojo** (`cargo install rojo`, `aftman add rojo-rbx/rojo`, or the
+   [Studio plugin](https://create.roblox.com/store/asset/13916111004/Rojo)).
+2. From the repo root, start the server:
+   ```
+   rojo serve
+   ```
+3. In **Roblox Studio**, open a new baseplate, open the **Rojo** plugin, and click
+   **Connect**.
+4. Press **Play** (F5). The course builds automatically and you spawn at Stage 0.
+
+### Publishing for console (PS5 / Xbox)
+
+1. Publish the place (*File → Publish to Roblox As…*) and set the experience to
+   **Public** in the [Creator Dashboard](https://create.roblox.com).
+2. In Studio, *Home → Game Settings → **Playable Devices*** → enable **Console** so
+   it appears on PS5/Xbox. DataStores (best times / global board) work automatically
+   in a published game.
+3. On PS5, install **Roblox** from the PlayStation Store, sign in, and open the
+   experience (favourite it on the web/app first to find it quickly). Move with the
+   left stick, jump with **✕**; Reset/Skip are on **Triangle/Square**.
+
+Prefer a one-shot place file instead of live sync? Build one with:
+
+```
+rojo build default.project.json --output RainbowRush.rbxlx
+```
+
+then open `RainbowRush.rbxlx` in Studio.
+
+## Tuning
+
+Most knobs live in [`src/shared/Config.luau`](src/shared/Config.luau): number of
+stages (`STAGE_COUNT`), platform/gap sizes, spawn height, colours, moving-platform
+amplitude/speed, disappear timings, and the skip gamepass id. The mix of static /
+moving / disappearing platforms is decided by `Config.platformKind(stage)` — edit that
+rule to change the pattern. Change a value, re-sync, and the next server build reflects it.
+
+## Best-time persistence & global board
+
+Best times persist through `DataService`:
+
+- A **DataStore** stores each player's own best (loaded on join, saved on improvement).
+- An **OrderedDataStore** ranks best times (as integer milliseconds) to power the
+  global **"Fastest Times"** board built near spawn by `GlobalBoard`.
+
+This needs the DataStore API to be available: a **published** place, or Studio with
+**Game Settings → Security → Enable Studio Access to API Services** ticked. If the API
+is unavailable, `DataService` detects the failure, turns persistence off, and the game
+still runs — the board just shows a hint instead of times. Toggle it all with
+`USE_DATASTORE` in `Config`, and bump `BEST_STORE_NAME` / `GLOBAL_STORE_NAME` if you
+ever want to wipe saved data.
+
+## Notes
+
+- Moving platforms are anchored and tweened; their checkpoint marker rides along each
+  frame so it stays with the platform.
