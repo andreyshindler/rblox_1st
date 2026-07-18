@@ -11,6 +11,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local CourseBuilder = require(script.Parent:WaitForChild("CourseBuilder"))
 local TimerService = require(script.Parent:WaitForChild("TimerService"))
+local CoinService = require(script.Parent:WaitForChild("CoinService"))
+local DataService = require(script.Parent:WaitForChild("DataService"))
 
 local CheckpointService = {}
 
@@ -128,6 +130,7 @@ local function onPlayerRemoving(player: Player)
 	playerStage[player.UserId] = nil
 	finishDebounce[player.UserId] = nil
 	TimerService.clear(player)
+	DataService.releaseProfile(player.UserId)
 end
 
 -- Public: the player's current stage.
@@ -182,8 +185,9 @@ function CheckpointService.start(builtCourse: CourseBuilder.Course)
 		end
 		finishDebounce[player.UserId] = true
 
-		-- Stop the clock and record the time / best.
-		TimerService.finishRun(player)
+		-- Stop the clock, record the time / best, and pay the finish bonus.
+		local elapsed = TimerService.finishRun(player)
+		CoinService.awardFinishBonus(player, elapsed)
 
 		local leaderstats = player:FindFirstChild("leaderstats")
 		local wins = leaderstats and leaderstats:FindFirstChild("Wins")

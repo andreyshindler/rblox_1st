@@ -70,6 +70,18 @@ local Config = {
 	USE_DATASTORE = true,
 	BEST_STORE_NAME = "RainbowRushBest_v1",
 	GLOBAL_STORE_NAME = "RainbowRushGlobal_v1",
+	PROFILE_STORE_NAME = "RainbowRushProfile_v1", -- coins, owned trails, equipped trail
+
+	-- Coin economy. Each stage scatters COINS_PER_STAGE pickups; a coin's value
+	-- is its zone number (Meadow 1, Ice 2, Volcano 3). Collected coins respawn
+	-- after COIN_RESPAWN seconds. Finishing pays FINISH_BONUS plus a speed bonus
+	-- of up to SPEED_BONUS_MAX for runs faster than SPEED_BONUS_PAR seconds.
+	COINS_PER_STAGE = 2,
+	COIN_RESPAWN = 45,
+	FINISH_BONUS = 25,
+	SPEED_BONUS_MAX = 50,
+	SPEED_BONUS_PAR = 180,
+	PROFILE_SAVE_DEBOUNCE = 15, -- seconds between debounced profile writes
 
 	-- Global best-time board (physical sign near spawn).
 	GLOBAL_BOARD_SIZE = 10, -- how many top times to show

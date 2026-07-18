@@ -20,15 +20,24 @@ local DataService = {}
 
 export type Entry = { name: string, seconds: number }
 
+-- A player's persistent economy record. `owned` is a list of ShopItems ids.
+export type Profile = {
+	coins: number,
+	owned: { string },
+	equipped: string?,
+}
+
 local enabled = Config.USE_DATASTORE == true
 local bestStore: DataStore? = nil
 local globalStore: OrderedDataStore? = nil
+local profileStore: DataStore? = nil
 local nameCache: { [number]: string } = {}
 
 if enabled then
 	local ok = pcall(function()
 		bestStore = DataStoreService:GetDataStore(Config.BEST_STORE_NAME)
 		globalStore = DataStoreService:GetOrderedDataStore(Config.GLOBAL_STORE_NAME)
+		profileStore = DataStoreService:GetDataStore(Config.PROFILE_STORE_NAME)
 	end)
 	if not ok then
 		enabled = false
@@ -97,6 +106,121 @@ local function resolveName(userId: number): string
 	end
 	return "Player " .. userId
 end
+
+-- ---------------------------------------------------------------------------
+-- Profiles (coins / owned trails / equipped trail)
+--
+-- The in-memory cache is authoritative while the player is online; writes are
+-- debounced, and flushed on leave and on server shutdown. UpdateAsync is used
+-- for the write so a stale in-flight value from another server never clobbers
+-- a richer record (highest coins + union of owned wins).
+
+local profiles: { [number]: Profile } = {}
+local dirty: { [number]: boolean } = {}
+local lastSave: { [number]: number } = {}
+
+local function defaultProfile(): Profile
+	return { coins = 0, owned = {}, equipped = nil }
+end
+
+local function mergeProfiles(old: Profile?, new: Profile): Profile
+	if not old then
+		return new
+	end
+	local ownedSet: { [string]: boolean } = {}
+	local owned: { string } = {}
+	for _, id in old.owned do
+		if not ownedSet[id] then
+			ownedSet[id] = true
+			table.insert(owned, id)
+		end
+	end
+	for _, id in new.owned do
+		if not ownedSet[id] then
+			ownedSet[id] = true
+			table.insert(owned, id)
+		end
+	end
+	return {
+		coins = math.max(old.coins, new.coins),
+		owned = owned,
+		equipped = new.equipped,
+	}
+end
+
+local function writeProfile(userId: number)
+	local profile = profiles[userId]
+	if not enabled or not profileStore or not profile then
+		return
+	end
+	lastSave[userId] = os.clock()
+	dirty[userId] = nil
+	pcall(function()
+		(profileStore :: DataStore):UpdateAsync(key(userId), function(old)
+			return mergeProfiles(old :: Profile?, profile)
+		end)
+	end)
+end
+
+-- Loads (or initialises) the player's profile into the cache. Yields; call from
+-- a spawned thread on join. Returns the cached profile.
+function DataService.loadProfile(userId: number): Profile
+	if profiles[userId] then
+		return profiles[userId]
+	end
+	local loaded: Profile? = nil
+	if enabled and profileStore then
+		local ok, result = pcall(function()
+			return (profileStore :: DataStore):GetAsync(key(userId))
+		end)
+		if ok and typeof(result) == "table" then
+			local t = result :: any
+			loaded = {
+				coins = typeof(t.coins) == "number" and t.coins or 0,
+				owned = typeof(t.owned) == "table" and t.owned or {},
+				equipped = typeof(t.equipped) == "string" and t.equipped or nil,
+			}
+		end
+	end
+	profiles[userId] = loaded or defaultProfile()
+	return profiles[userId]
+end
+
+-- The cached profile, or nil if not loaded yet.
+function DataService.getProfile(userId: number): Profile?
+	return profiles[userId]
+end
+
+-- Mark the profile changed; it is written after a debounce window (or on leave).
+function DataService.markProfileDirty(userId: number)
+	if not profiles[userId] then
+		return
+	end
+	dirty[userId] = true
+	local since = os.clock() - (lastSave[userId] or 0)
+	local wait = math.max(Config.PROFILE_SAVE_DEBOUNCE - since, 0)
+	task.delay(wait, function()
+		if dirty[userId] then
+			writeProfile(userId)
+		end
+	end)
+end
+
+-- Flush and drop the profile when the player leaves.
+function DataService.releaseProfile(userId: number)
+	if dirty[userId] then
+		writeProfile(userId)
+	end
+	profiles[userId] = nil
+	dirty[userId] = nil
+	lastSave[userId] = nil
+end
+
+game:BindToClose(function()
+	for userId in profiles do
+		writeProfile(userId)
+	end
+end)
 
 -- Returns up to `count` fastest times, ascending. Empty when unavailable.
 function DataService.getTopTimes(count: number): { Entry }
