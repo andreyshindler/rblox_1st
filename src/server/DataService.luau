@@ -33,10 +33,18 @@ export type Profile = {
 	lastDailyClaim: number,
 }
 
+-- A recorded best run: parallel sample arrays (time, position, yaw), kept flat
+-- and rounded client-side for compact JSON.
+export type Ghost = {
+	time: number,
+	samples: { t: { number }, x: { number }, y: { number }, z: { number }, ry: { number } },
+}
+
 local enabled = Config.USE_DATASTORE == true
 local bestStore: DataStore? = nil
 local globalStore: OrderedDataStore? = nil
 local profileStore: DataStore? = nil
+local ghostStore: DataStore? = nil
 local nameCache: { [number]: string } = {}
 
 if enabled then
@@ -44,6 +52,7 @@ if enabled then
 		bestStore = DataStoreService:GetDataStore(Config.BEST_STORE_NAME)
 		globalStore = DataStoreService:GetOrderedDataStore(Config.GLOBAL_STORE_NAME)
 		profileStore = DataStoreService:GetDataStore(Config.PROFILE_STORE_NAME)
+		ghostStore = DataStoreService:GetDataStore(Config.GHOST_STORE_NAME)
 	end)
 	if not ok then
 		enabled = false
@@ -256,6 +265,47 @@ game:BindToClose(function()
 		writeProfile(userId)
 	end
 end)
+
+-- ---------------------------------------------------------------------------
+-- Ghost replays (best-run recordings)
+
+-- Session cache; false marks "checked the store, nothing there" so repeated
+-- requests from the client don't re-hit the DataStore.
+local ghosts: { [number]: Ghost | false } = {}
+
+-- Returns the player's stored best-run recording, or nil. Yields on first call.
+function DataService.loadGhost(userId: number): Ghost?
+	local cached = ghosts[userId]
+	if cached ~= nil then
+		return cached or nil
+	end
+	local loaded: Ghost? = nil
+	if enabled and ghostStore then
+		local ok, result = pcall(function()
+			return (ghostStore :: DataStore):GetAsync(key(userId))
+		end)
+		if ok and typeof(result) == "table" then
+			local t = result :: any
+			if typeof(t.time) == "number" and typeof(t.samples) == "table" then
+				loaded = t :: Ghost
+			end
+		end
+	end
+	ghosts[userId] = loaded or false
+	return loaded
+end
+
+-- Persists a new best-run recording (already validated by GhostService) and
+-- updates the session cache. Fire-and-forget; safe from a spawned thread.
+function DataService.saveGhost(userId: number, ghost: Ghost)
+	ghosts[userId] = ghost
+	if not enabled or not ghostStore then
+		return
+	end
+	pcall(function()
+		(ghostStore :: DataStore):SetAsync(key(userId), ghost)
+	end)
+end
 
 -- Returns up to `count` fastest times, ascending. Empty when unavailable.
 function DataService.getTopTimes(count: number): { Entry }
