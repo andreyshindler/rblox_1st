@@ -4,10 +4,24 @@
 -- server (course builder / checkpoints / hazards) and client (HUD) read the
 -- same values.
 
+export type Zone = {
+	name: string,
+	hueMin: number, -- platform colour range (HSV hue, 0..1)
+	hueMax: number,
+	saturation: number,
+	value: number,
+	material: Enum.Material,
+	friction: number?, -- nil = default physics; Ice sets a low value
+	-- Eight platform kinds, one per stage in the zone, in order. Kinds:
+	-- "static" | "moving" | "disappearing" | "spinner" | "conveyor" | "jumppad"
+	pattern: { string },
+}
+
 local Config = {
-	-- Number of playable stages (checkpoint 0 is the spawn, so there are
-	-- STAGE_COUNT platforms after it, ending in the finish pad).
-	STAGE_COUNT = 10,
+	-- Stages are grouped into themed zones of ZONE_SIZE; STAGE_COUNT must equal
+	-- ZONE_SIZE * #ZONES (checkpoint 0 is the spawn platform before stage 1).
+	STAGE_COUNT = 24,
+	ZONE_SIZE = 8,
 
 	-- Geometry (in studs).
 	PLATFORM_SIZE = Vector3.new(16, 1, 16),
@@ -31,6 +45,17 @@ local Config = {
 	DISAPPEAR_DELAY = 0.6, -- grace period after first touch before it goes
 	DISAPPEAR_DURATION = 2.0, -- how long it stays gone before returning
 
+	-- Spinner: a kill-bar sweeping over the platform.
+	SPINNER_SPEED = math.rad(90), -- radians per second
+	SPINNER_HEIGHT = 2.5, -- bar centre height above the platform top
+
+	-- Conveyor: anchored platform with surface velocity pushing against travel.
+	CONVEYOR_SPEED = 12, -- studs/second, pushing back toward the start
+
+	-- Jump pad: launches the player over an extra-wide gap.
+	JUMP_PAD_VELOCITY = Vector3.new(55, 65, 0), -- forward (+X) and up impulse
+	JUMPPAD_GAP_MULT = 2.5, -- the gap before a jumppad stage is this many GAPs wide
+
 	-- Skip-stage gamepass. Create a gamepass on your game and put its id here.
 	-- While it is 0 the button still works in Studio (see ALLOW_SKIP_IN_STUDIO)
 	-- so you can test; in a live game a 0 id simply does nothing.
@@ -51,22 +76,64 @@ local Config = {
 	BOARD_REFRESH = 45, -- seconds between automatic board refreshes
 }
 
--- Rainbow gradient for stage platforms. `stageColor(i)` returns a hue-rotated
--- colour so consecutive platforms cycle through the spectrum.
-function Config.stageColor(stageIndex: number): Color3
-	local hue = (stageIndex / math.max(Config.STAGE_COUNT, 1)) % 1
-	return Color3.fromHSV(hue, 0.65, 0.95)
+-- Themed zones, ZONE_SIZE stages each, in course order. Difficulty ramps:
+-- Meadow teaches the mechanics, Ice is slippery with vanishing footing, and
+-- Volcano combines everything.
+Config.ZONES = {
+	{
+		name = "Meadow",
+		hueMin = 0.24,
+		hueMax = 0.38,
+		saturation = 0.6,
+		value = 0.85,
+		material = Enum.Material.Grass,
+		friction = nil,
+		pattern = { "static", "static", "moving", "static", "conveyor", "static", "jumppad", "moving" },
+	},
+	{
+		name = "Ice",
+		hueMin = 0.52,
+		hueMax = 0.6,
+		saturation = 0.35,
+		value = 0.95,
+		material = Enum.Material.Ice,
+		friction = 0.05,
+		pattern = { "static", "disappearing", "moving", "disappearing", "conveyor", "jumppad", "disappearing", "spinner" },
+	},
+	{
+		name = "Volcano",
+		hueMin = 0.0,
+		hueMax = 0.07,
+		saturation = 0.85,
+		value = 0.55,
+		material = Enum.Material.Slate,
+		friction = nil,
+		pattern = { "spinner", "conveyor", "moving", "spinner", "disappearing", "jumppad", "spinner", "disappearing" },
+	},
+} :: { Zone }
+
+-- Zone lookup for a 1-based stage number: returns the zone and the 1-based
+-- position of the stage within it.
+function Config.zoneFor(stage: number): (Zone, number)
+	local zoneIndex = math.clamp(math.ceil(stage / Config.ZONE_SIZE), 1, #Config.ZONES)
+	local posInZone = stage - (zoneIndex - 1) * Config.ZONE_SIZE
+	return Config.ZONES[zoneIndex], posInZone
 end
 
--- Decides what kind of platform a stage gets. Returns "static", "moving" or
--- "disappearing". The mix is deterministic so the course is the same every build.
+-- Platform colour: a hue swept across the zone's own range, so each zone reads
+-- as one palette while platforms within it still vary.
+function Config.stageColor(stage: number): Color3
+	local zone, pos = Config.zoneFor(stage)
+	local t = (pos - 1) / math.max(Config.ZONE_SIZE - 1, 1)
+	local hue = zone.hueMin + (zone.hueMax - zone.hueMin) * t
+	return Color3.fromHSV(hue, zone.saturation, zone.value)
+end
+
+-- What kind of platform a stage gets, from its zone's fixed pattern — fully
+-- deterministic so the course is identical every build.
 function Config.platformKind(stage: number): string
-	if stage % 4 == 0 then
-		return "disappearing"
-	elseif stage % 3 == 0 then
-		return "moving"
-	end
-	return "static"
+	local zone, pos = Config.zoneFor(stage)
+	return zone.pattern[pos] or "static"
 end
 
 -- Format seconds as "12.34s" or "1:05.20". Shared by the client HUD and the
