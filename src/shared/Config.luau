@@ -36,6 +36,19 @@ local Config = {
 	-- so you can test; in a live game a 0 id simply does nothing.
 	SKIP_STAGE_GAMEPASS_ID = 0,
 	ALLOW_SKIP_IN_STUDIO = true,
+
+	-- Best-time persistence. When enabled, each player's best time is saved to a
+	-- DataStore (loaded on join) and submitted to an OrderedDataStore that powers
+	-- the global best-time board. Requires a published game, or Studio with
+	-- "Enable Studio Access to API Services" ticked — if the API is unavailable,
+	-- persistence quietly turns itself off and the game still runs.
+	USE_DATASTORE = true,
+	BEST_STORE_NAME = "RainbowRushBest_v1",
+	GLOBAL_STORE_NAME = "RainbowRushGlobal_v1",
+
+	-- Global best-time board (physical sign near spawn).
+	GLOBAL_BOARD_SIZE = 10, -- how many top times to show
+	BOARD_REFRESH = 45, -- seconds between automatic board refreshes
 }
 
 -- Rainbow gradient for stage platforms. `stageColor(i)` returns a hue-rotated
@@ -54,6 +67,20 @@ function Config.platformKind(stage: number): string
 		return "moving"
 	end
 	return "static"
+end
+
+-- Format seconds as "12.34s" or "1:05.20". Shared by the client HUD and the
+-- server-built global board so both read identically.
+function Config.formatTime(t: number): string
+	if t <= 0 then
+		return "0.00s"
+	end
+	local minutes = math.floor(t / 60)
+	local seconds = t - minutes * 60
+	if minutes > 0 then
+		return string.format("%d:%05.2f", minutes, seconds)
+	end
+	return string.format("%.2fs", seconds)
 end
 
 return Config

@@ -113,6 +113,9 @@ local function onPlayerAdded(player: Player)
 
 	leaderstats.Parent = player
 
+	-- Pull the player's persisted best time onto the leaderboard.
+	TimerService.loadPlayer(player)
+
 	player.CharacterAdded:Connect(function(character)
 		onCharacterAdded(player, character)
 	end)

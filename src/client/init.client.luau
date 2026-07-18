@@ -8,21 +8,12 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Format seconds as "12.34s" or "1:05.20" for longer runs.
-local function formatTime(t: number): string
-	if t <= 0 then
-		return "0.00s"
-	end
-	local minutes = math.floor(t / 60)
-	local seconds = t - minutes * 60
-	if minutes > 0 then
-		return string.format("%d:%05.2f", minutes, seconds)
-	end
-	return string.format("%.2fs", seconds)
-end
+local formatTime = Config.formatTime
 
 -- Small helper to keep the widget construction tidy.
 local function corner(parent: Instance, radius: number)

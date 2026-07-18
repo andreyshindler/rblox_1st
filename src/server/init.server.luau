@@ -8,10 +8,12 @@ local CourseBuilder = require(script:WaitForChild("CourseBuilder"))
 local HazardService = require(script:WaitForChild("HazardService"))
 local CheckpointService = require(script:WaitForChild("CheckpointService"))
 local GamepassService = require(script:WaitForChild("GamepassService"))
+local GlobalBoard = require(script:WaitForChild("GlobalBoard"))
 
 local course = CourseBuilder.build()
 HazardService.start(course)
 CheckpointService.start(course)
 GamepassService.start()
+GlobalBoard.start(course)
 
 print("[Rainbow Rush] Course built, hazards armed, checkpoints online.")

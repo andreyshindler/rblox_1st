@@ -15,7 +15,8 @@ running the course.
 - **Moving platforms** (metal) slide side to side — time your jump. **Disappearing
   platforms** (ice) fade out a moment after you step on, then return, so keep moving.
 - A **live timer** runs from the first checkpoint to the finish, and your **Best**
-  time is tracked on the leaderboard.
+  time is tracked on the leaderboard and **saved between sessions**.
+- A **"Fastest Times" board** near spawn shows the global top times across all servers.
 - Reach the gold **finish pad** to score a **Win** and loop back for another lap.
 - HUD shows your stage, live timer and best time, plus **Reset to checkpoint** and
   **Skip Stage** buttons. Skip Stage is gated by a gamepass (see below).
@@ -31,6 +32,8 @@ src/
     HazardService.luau        # Moving (TweenService) + disappearing platforms
     CheckpointService.luau    # leaderstats, checkpoints, respawn, lava, finish
     TimerService.luau         # Run timing + best-time tracking (player attributes)
+    DataService.luau          # DataStore + OrderedDataStore best-time persistence
+    GlobalBoard.luau          # Physical "Fastest Times" sign near spawn
     GamepassService.luau      # Skip-stage gamepass + Skip button remote
   client/
     init.client.luau          # HUD (StarterPlayerScripts.Client)
@@ -78,10 +81,22 @@ amplitude/speed, disappear timings, and the skip gamepass id. The mix of static 
 moving / disappearing platforms is decided by `Config.platformKind(stage)` — edit that
 rule to change the pattern. Change a value, re-sync, and the next server build reflects it.
 
+## Best-time persistence & global board
+
+Best times persist through `DataService`:
+
+- A **DataStore** stores each player's own best (loaded on join, saved on improvement).
+- An **OrderedDataStore** ranks best times (as integer milliseconds) to power the
+  global **"Fastest Times"** board built near spawn by `GlobalBoard`.
+
+This needs the DataStore API to be available: a **published** place, or Studio with
+**Game Settings → Security → Enable Studio Access to API Services** ticked. If the API
+is unavailable, `DataService` detects the failure, turns persistence off, and the game
+still runs — the board just shows a hint instead of times. Toggle it all with
+`USE_DATASTORE` in `Config`, and bump `BEST_STORE_NAME` / `GLOBAL_STORE_NAME` if you
+ever want to wipe saved data.
+
 ## Notes
 
-- Best times are tracked per session. To persist them across sessions, save the value
-  from `TimerService` to a `DataStore` (or an `OrderedDataStore` for a global
-  best-time board) — Studio needs *Enable Studio Access to API Services* for that.
 - Moving platforms are anchored and tweened; their checkpoint marker rides along each
   frame so it stays with the platform.
