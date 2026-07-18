@@ -86,6 +86,20 @@ local Config = {
 	-- Global best-time board (physical sign near spawn).
 	GLOBAL_BOARD_SIZE = 10, -- how many top times to show
 	BOARD_REFRESH = 45, -- seconds between automatic board refreshes
+
+	-- Sound effects. The defaults are Roblox built-ins (rbxasset://) that are
+	-- guaranteed to exist; swap any of them for catalogue ids
+	-- ("rbxassetid://<number>") for a richer soundscape.
+	SOUNDS = {
+		checkpoint = "rbxasset://sounds/electronicpingshort.wav",
+		coin = "rbxasset://sounds/snap.mp3",
+		death = "rbxasset://sounds/splat.mp3",
+		finish = "rbxasset://sounds/victory.wav",
+	},
+	-- Background music loop: set to a catalogue audio id number to enable
+	-- (e.g. 1848354536); 0 = no music.
+	MUSIC_ID = 0,
+	MUSIC_VOLUME = 0.3,
 }
 
 -- Themed zones, ZONE_SIZE stages each, in course order. Difficulty ramps:

@@ -7,22 +7,28 @@ running the course.
 
 ## Gameplay
 
-- Spawn on the green pad (Stage 0) and parkour across floating rainbow platforms.
+- **24 stages across three themed zones** — **Meadow** (learn the ropes), **Ice**
+  (slippery, vanishing footing), and **Volcano** (everything at once) — each with its
+  own palette, materials, and hazard mix, named by a floating sign.
 - Each platform starts with a glowing **checkpoint** that locks in your progress —
-  your `Stage` shows on the leaderboard.
-- **Lava strips** in the gaps reset you if you touch them; you respawn at your last
-  checkpoint (not the start).
-- **Moving platforms** (metal) slide side to side — time your jump. **Disappearing
-  platforms** (ice) fade out a moment after you step on, then return, so keep moving.
-- A **live timer** runs from the first checkpoint to the finish, and your **Best**
-  time is tracked on the leaderboard and **saved between sessions**.
-- A **"Fastest Times" board** near spawn shows the global top times across all servers.
-- Reach the gold **finish pad** to score a **Win** and loop back for another lap.
-- HUD shows your stage, live timer and best time, plus **Reset to checkpoint** and
-  **Skip Stage** buttons. Skip Stage is gated by a gamepass (see below).
-- **Cross-platform**: touch and mouse tap the HUD buttons; on a controller
-  (PlayStation / Xbox) **Reset = Triangle/Y** and **Skip Stage = Square/X** (jump
-  stays on Cross/A). The buttons show the matching glyph when a gamepad is in use.
+  your `Stage` shows on the leaderboard. **Lava strips** in the gaps reset you to
+  your last checkpoint.
+- Hazards: **moving platforms** slide side to side, **disappearing platforms** fade
+  under your feet, **spinner kill-bars** sweep their platforms, **conveyors** push
+  you backward, and **jump pads** launch you across extra-wide gaps.
+- **Coins** spin over every platform (worth more in later zones) — spend them in the
+  **Trail Shop** on six trail cosmetics that follow your character. Coins, owned
+  trails, and your equipped trail are **saved between sessions**.
+- A **live timer** runs from the first checkpoint to the finish; finishing pays a
+  coin bonus (faster runs pay more), and your **Best** time is on the leaderboard,
+  persisted, and ranked on the global **"Fastest Times" board** near spawn.
+- Feedback everywhere: checkpoint chimes, coin dings, a finish fanfare with
+  confetti, and fireworks when you set a new personal best.
+- HUD shows stage, timer, best time and coins, plus **Reset**, **Skip Stage**
+  (gamepass) and **Shop** buttons.
+- **Cross-platform**: touch and mouse tap the HUD; on a controller (PlayStation /
+  Xbox) **Reset = Triangle/Y**, **Skip Stage = Square/X**, **Shop = D-pad Up** (jump
+  stays on Cross/A), and the shop is navigable with the gamepad.
 
 ## Project layout
 
@@ -31,17 +37,21 @@ default.project.json          # Rojo project — maps folders to Roblox services
 src/
   server/
     init.server.luau          # Boots the game (ServerScriptService.Server)
-    CourseBuilder.luau        # Procedurally builds the course into Workspace
-    HazardService.luau        # Moving (TweenService) + disappearing platforms
+    CourseBuilder.luau        # Procedurally builds the zoned course into Workspace
+    HazardService.luau        # Moving, disappearing, spinner, conveyor, jump pad
     CheckpointService.luau    # leaderstats, checkpoints, respawn, lava, finish
     TimerService.luau         # Run timing + best-time tracking (player attributes)
-    DataService.luau          # DataStore + OrderedDataStore best-time persistence
+    CoinService.luau          # Coin pickups, Coins leaderstat, finish bonus
+    ShopService.luau          # Server-validated trail shop (buy/equip) + trails
+    DataService.luau          # DataStores: best times, global ranks, profiles
     GlobalBoard.luau          # Physical "Fastest Times" sign near spawn
     GamepassService.luau      # Skip-stage gamepass + Skip button remote
+    EffectsService.luau       # Sounds, confetti, PB fireworks, ambient music
   client/
-    init.client.luau          # HUD (StarterPlayerScripts.Client)
+    init.client.luau          # HUD + trail shop UI (StarterPlayerScripts.Client)
   shared/
     Config.luau               # Tunables shared by server + client (ReplicatedStorage.Shared)
+    ShopItems.luau            # Trail catalogue shared by shop UI + server validation
 ```
 
 ## Skip-stage gamepass
@@ -89,11 +99,30 @@ then open `RainbowRush.rbxlx` in Studio.
 
 ## Tuning
 
-Most knobs live in [`src/shared/Config.luau`](src/shared/Config.luau): number of
-stages (`STAGE_COUNT`), platform/gap sizes, spawn height, colours, moving-platform
-amplitude/speed, disappear timings, and the skip gamepass id. The mix of static /
-moving / disappearing platforms is decided by `Config.platformKind(stage)` — edit that
-rule to change the pattern. Change a value, re-sync, and the next server build reflects it.
+Most knobs live in [`src/shared/Config.luau`](src/shared/Config.luau): stage/zone
+counts, platform/gap sizes, hazard speeds and timings, coin values and respawn,
+finish/speed bonuses, sound ids, music, and the skip gamepass id. Each zone in
+`Config.ZONES` declares its palette, material, friction, and an eight-slot
+platform-kind `pattern` — edit those tables to re-theme or re-mix the course.
+Trail cosmetics (names, prices, colours) live in
+[`src/shared/ShopItems.luau`](src/shared/ShopItems.luau). Change a value, re-sync,
+and the next server build reflects it.
+
+## Coins, shop & persistence
+
+- Coins respawn per-server after `COIN_RESPAWN` seconds; values scale by zone.
+- The shop is fully server-validated (`ShopService`): the client can only ask.
+  Purchases auto-equip; trails attach to the character on every spawn.
+- Player profiles (coins, owned trails, equipped trail) are saved via
+  `UpdateAsync` with a merge rule, debounced while online and flushed on leave
+  and server shutdown — a lost race with another server never loses purchases.
+
+## Sounds
+
+Default sound effects use Roblox built-ins (`rbxasset://sounds/...`) so they work
+with zero setup. For a richer soundscape, swap the ids in `Config.SOUNDS` for
+catalogue audio (`rbxassetid://<id>`), and set `MUSIC_ID` to a licensed audio id
+to enable the ambient loop.
 
 ## Best-time persistence & global board
 

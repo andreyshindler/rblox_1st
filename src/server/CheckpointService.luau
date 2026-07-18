@@ -23,6 +23,19 @@ local course: CourseBuilder.Course? = nil
 -- Debounce so a single Touched isn't processed dozens of times per contact.
 local finishDebounce: { [number]: boolean } = {}
 
+-- Listeners for game moments (effects, future badges, ...). Fired in their own
+-- threads so a slow listener can't stall progression.
+local checkpointListeners: { (player: Player, stage: number) -> () } = {}
+local finishListeners: { (player: Player, elapsed: number) -> () } = {}
+
+function CheckpointService.addCheckpointListener(fn: (player: Player, stage: number) -> ())
+	table.insert(checkpointListeners, fn)
+end
+
+function CheckpointService.addFinishListener(fn: (player: Player, elapsed: number) -> ())
+	table.insert(finishListeners, fn)
+end
+
 local function getHumanoid(part: Instance): (Humanoid?, Player?)
 	local character = part.Parent
 	if not character then
@@ -56,6 +69,10 @@ local function setStage(player: Player, stage: number)
 	-- actually on the course, and each new lap re-arms cleanly.
 	if stage == 1 and not player:GetAttribute("RunActive") then
 		TimerService.startRun(player)
+	end
+
+	for _, listener in checkpointListeners do
+		task.spawn(listener, player, stage)
 	end
 end
 
@@ -188,6 +205,10 @@ function CheckpointService.start(builtCourse: CourseBuilder.Course)
 		-- Stop the clock, record the time / best, and pay the finish bonus.
 		local elapsed = TimerService.finishRun(player)
 		CoinService.awardFinishBonus(player, elapsed)
+
+		for _, listener in finishListeners do
+			task.spawn(listener, player, elapsed)
+		end
 
 		local leaderstats = player:FindFirstChild("leaderstats")
 		local wins = leaderstats and leaderstats:FindFirstChild("Wins")
