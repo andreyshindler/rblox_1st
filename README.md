@@ -20,6 +20,9 @@ running the course.
 - Reach the gold **finish pad** to score a **Win** and loop back for another lap.
 - HUD shows your stage, live timer and best time, plus **Reset to checkpoint** and
   **Skip Stage** buttons. Skip Stage is gated by a gamepass (see below).
+- **Cross-platform**: touch and mouse tap the HUD buttons; on a controller
+  (PlayStation / Xbox) **Reset = Triangle/Y** and **Skip Stage = Square/X** (jump
+  stays on Cross/A). The buttons show the matching glyph when a gamepad is in use.
 
 ## Project layout
 
@@ -64,6 +67,17 @@ gated by a gamepass:
 3. In **Roblox Studio**, open a new baseplate, open the **Rojo** plugin, and click
    **Connect**.
 4. Press **Play** (F5). The course builds automatically and you spawn at Stage 0.
+
+### Publishing for console (PS5 / Xbox)
+
+1. Publish the place (*File → Publish to Roblox As…*) and set the experience to
+   **Public** in the [Creator Dashboard](https://create.roblox.com).
+2. In Studio, *Home → Game Settings → **Playable Devices*** → enable **Console** so
+   it appears on PS5/Xbox. DataStores (best times / global board) work automatically
+   in a published game.
+3. On PS5, install **Roblox** from the PlayStation Store, sign in, and open the
+   experience (favourite it on the web/app first to find it quickly). Move with the
+   left stick, jump with **✕**; Reset/Skip are on **Triangle/Square**.
 
 Prefer a one-shot place file instead of live sync? Build one with:
 

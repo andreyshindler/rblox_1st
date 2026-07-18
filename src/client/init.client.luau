@@ -7,8 +7,15 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ContextActionService = game:GetService("ContextActionService")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+
+-- Controller buttons for the two HUD actions. On a PlayStation pad Roblox maps
+-- ButtonY -> Triangle and ButtonX -> Square; neither collides with ButtonA (jump).
+local RESET_KEYS = { Enum.KeyCode.ButtonY, Enum.KeyCode.R }
+local SKIP_KEYS = { Enum.KeyCode.ButtonX }
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -129,17 +136,71 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- Reset button: kill the character so the server respawns them at their checkpoint.
-resetButton.Activated:Connect(function()
+local skipEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SkipStage")
+
+-- The two actions, shared by touch/click (Activated) and controller (ContextActionService).
+local function doReset()
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		humanoid.Health = 0
 	end
-end)
+end
 
--- Skip button: ask the server to skip a stage (gated by the gamepass server-side).
-local skipEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SkipStage")
-skipButton.Activated:Connect(function()
+local function doSkip()
 	skipEvent:FireServer()
-end)
+end
+
+-- Touch / mouse.
+resetButton.Activated:Connect(doReset)
+skipButton.Activated:Connect(doSkip)
+
+-- Keyboard / gamepad. createTouchButton = false: we already show our own buttons,
+-- so no extra on-screen control is spawned on touch devices. Pass the input through
+-- so nothing else is blocked.
+local function bindAction(name: string, fn: () -> (), keys: { Enum.KeyCode })
+	ContextActionService:BindAction(name, function(_, state)
+		if state == Enum.UserInputState.Begin then
+			fn()
+		end
+		return Enum.ContextActionResult.Pass
+	end, false, table.unpack(keys))
+end
+
+bindAction("RainbowRushReset", doReset, RESET_KEYS)
+bindAction("RainbowRushSkip", doSkip, SKIP_KEYS)
+
+-- These are triggered by dedicated buttons (above), not by gamepad UI focus, so
+-- keep them out of gamepad selection — that avoids ButtonA (jump) accidentally
+-- activating a focused button.
+resetButton.Selectable = false
+skipButton.Selectable = false
+
+-- Show the matching controller glyph on the buttons while a gamepad is in use,
+-- and the plain labels for touch/mouse.
+local function keyHint(keyCode: Enum.KeyCode, fallback: string): string
+	local ok, str = pcall(function()
+		return UserInputService:GetStringForKeyCode(keyCode)
+	end)
+	if ok and typeof(str) == "string" and str ~= "" then
+		return str
+	end
+	return fallback
+end
+
+local function gamepadActive(): boolean
+	return string.sub(UserInputService:GetLastInputType().Name, 1, 7) == "Gamepad"
+end
+
+local function updateHints()
+	if gamepadActive() then
+		resetButton.Text = "Reset  (" .. keyHint(Enum.KeyCode.ButtonY, "Y") .. ")"
+		skipButton.Text = "Skip Stage  (" .. keyHint(Enum.KeyCode.ButtonX, "X") .. ")"
+	else
+		resetButton.Text = "Reset to checkpoint"
+		skipButton.Text = "⏭ Skip Stage"
+	end
+end
+
+UserInputService.LastInputTypeChanged:Connect(updateHints)
+updateHints()
