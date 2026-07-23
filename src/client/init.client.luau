@@ -314,6 +314,10 @@ Ghost.start()
 local Music = require(script:WaitForChild("Music"))
 Music.start()
 
+-- Jump pads launch from the client (the character is client-owned).
+local JumpPads = require(script:WaitForChild("JumpPads"))
+JumpPads.start()
+
 local function refreshGhostButton()
 	if Ghost.isEnabled() then
 		ghostButton.BackgroundColor3 = Color3.fromRGB(70, 130, 160)

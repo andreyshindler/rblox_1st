@@ -8,6 +8,8 @@
 -- kind, palette, material and friction come from its zone.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
+
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 
 local CourseBuilder = {}
@@ -175,6 +177,9 @@ function CourseBuilder.build(): Course
 			pad.Material = Enum.Material.Neon
 			pad.Position = previousPlatform.Position
 				+ Vector3.new(Config.PLATFORM_SIZE.X / 2 - 3, 0.8, 0)
+			-- Tagged so the CLIENT can wire the launch (the character is
+			-- client-owned; a server-side velocity write would be overridden).
+			CollectionService:AddTag(pad, "JumpPad")
 			table.insert(jumpPads, pad)
 		end
 
