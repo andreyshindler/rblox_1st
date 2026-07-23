@@ -91,30 +91,10 @@ local function setupConveyor(platform: BasePart)
 	platform.AssemblyLinearVelocity = Vector3.new(-Config.CONVEYOR_SPEED, 0, 0)
 end
 
--- Launch characters up and forward across the wide gap. A short per-character
--- debounce stops one landing from re-triggering the pad repeatedly.
-local function setupJumpPad(pad: BasePart)
-	local recentlyLaunched: { [Model]: boolean } = {}
-
-	pad.Touched:Connect(function(hit)
-		local character = hit.Parent :: Model?
-		if not character or recentlyLaunched[character] then
-			return
-		end
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		local root = character:FindFirstChild("HumanoidRootPart")
-		if not humanoid or not root or not root:IsA("BasePart") then
-			return
-		end
-		recentlyLaunched[character] = true
-
-		root.AssemblyLinearVelocity = Config.JUMP_PAD_VELOCITY
-
-		task.delay(1, function()
-			recentlyLaunched[character] = nil
-		end)
-	end)
-end
+-- Jump pads are wired on the CLIENT (src/client/JumpPads.luau): player
+-- characters are network-owned by their client, so a server-side velocity
+-- write gets overridden by the client's own simulation within a frame. The
+-- pads themselves are still built (and tagged "JumpPad") by CourseBuilder.
 
 function HazardService.start(course: CourseBuilder.Course)
 	for _, entry in course.movingPlatforms do
@@ -128,9 +108,6 @@ function HazardService.start(course: CourseBuilder.Course)
 	end
 	for _, platform in course.conveyors do
 		setupConveyor(platform)
-	end
-	for _, pad in course.jumpPads do
-		setupJumpPad(pad)
 	end
 end
 

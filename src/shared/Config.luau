@@ -52,8 +52,10 @@ local Config = {
 	-- Conveyor: anchored platform with surface velocity pushing against travel.
 	CONVEYOR_SPEED = 12, -- studs/second, pushing back toward the start
 
-	-- Jump pad: launches the player over an extra-wide gap.
-	JUMP_PAD_VELOCITY = Vector3.new(55, 65, 0), -- forward (+X) and up impulse
+	-- Jump pad: launches the player over an extra-wide gap. At gravity 196.2 the
+	-- flight time is 2*65/196.2 ≈ 0.66s, so 48 forward ≈ 32 studs — landing in
+	-- the middle of the far platform (which spans ~23–39 studs from the pad).
+	JUMP_PAD_VELOCITY = Vector3.new(48, 65, 0), -- forward (+X) and up impulse
 	JUMPPAD_GAP_MULT = 2.5, -- the gap before a jumppad stage is this many GAPs wide
 
 	-- Skip-stage gamepass. In Studio the button also works without ownership
